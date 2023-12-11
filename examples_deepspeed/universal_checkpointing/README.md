@@ -58,7 +58,7 @@ Please see the corresponding [pull request](https://github.com/microsoft/Megatro
 Combining sequence parallelism with data parallelism is another good use case for universal checkpointing, see [sp pull request](https://github.com/microsoft/DeepSpeed/pull/4752) for example and visualization of matching loss values.
 
 ## ZeRO stage 2 training 
-Repeat steps in stage 1 training above with the following modifications to your job batch scripts:
+Repeat steps in ZeRO stage 1 training above with the following modifications to your job batch scripts:
 * Set ZERO_STAGE=2 
 * Add `--no-pipeline-parallel` flag to deepspeed options  
 
