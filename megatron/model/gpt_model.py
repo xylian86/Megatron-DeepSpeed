@@ -180,36 +180,7 @@ class GPTModel(MegatronModule):
         if len(moe_state_dict) > 0:
             state_dict["moe_state_dict"] = moe_state_dict
         self.language_model.load_state_dict(state_dict, strict=strict)
-    '''
-    def universal_checkpoint_info(self):
-        info = dict()
-        if DS_UNIVERSAL_CHECKPOINT_INFO:
-            # Vocabulary parameters (embeddings) that require special handling due to padding.
-            info[VOCABULARY_PARAMETER_PATTERNS] = [
-                r"tied_modules.embed.word_embeddings.weight"
-            ]
 
-            # Parameter slices that should be averaged not concatenated.
-            info[TP_REPLICATED_PARAMETER_PATTERNS] = [
-                r"tied_modules.embed.position_embeddings.weight",
-                r"\d+.input_layernorm.weight",
-                r"\d+.input_layernorm.bias",
-                r"\d+.post_attention_layernorm.weight",
-                r"\d+.post_attention_layernorm.bias",
-                r"\d+.self_attention.dense.bias",
-                r"\d+.mlp.dense_4h_to_h.bias",
-                r"\d+.weight",
-                r"\d+.bias",
-            ]
-
-            # Parameter that are sliced on the row dimension
-            info[PARAMETER_WITH_ROW_PARALLELISM_PATTERNS] = [
-                r"\d+.mlp.dense_4h_to_h.weight",
-                r"\d+.self_attention.dense.weight",
-            ]
-
-        return info
-    '''#SAGE
     def _get_vocab_param_patterns(self):
         args = get_args()
         if args.untie_embeddings_and_output_weights:
