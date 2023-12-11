@@ -40,7 +40,7 @@ SP=1
 WORLD_SIZE=$((TP*PP*DP*SP))
 GLOBAL_BATCH=16
 MICRO_BATCH=$((GLOBAL_BATCH/WORLD_SIZE))
-TRAIN_ITERS=1000
+TRAIN_ITERS=100000
 LR=6.0e-3
 MIN_LR=6.0e-4
 
@@ -52,7 +52,7 @@ LOAD_SP=$SP
 RUN_TAG="save"
 # RUN_TAG="ref_load${LOAD_TP}_${LOAD_PP}_${LOAD_DP}"
 
-EXP_DIR="z${ZERO_STAGE}_uni_ckpt_v2" 
+EXP_DIR="z${ZERO_STAGE}_uni_ckpt" 
 CHECKPOINT_PATH=${EXP_DIR}/checkpoints/gpt2/z${ZERO_STAGE}/$DTYPE/tp${TP}_pp${PP}_dp${DP}_sp${SP}_${SIZE_TAG}
 LOAD_CHECKPOINT_PATH=${EXP_DIR}/checkpoints/gpt2/z${ZERO_STAGE}/$DTYPE/tp${LOAD_TP}_pp${LOAD_PP}_dp${LOAD_DP}_sp${LOAD_SP}_${SIZE_TAG}
 LOG_DIR="${EXP_DIR}/tensorboard/$DTYPE/tp${TP}_pp${PP}_dp${DP}_sp${SP}_hd${HIDDEN}_nl${LAYERS}_gbsz${GLOBAL_BATCH}_mbsz${MICRO_BATCH}_z${ZERO_STAGE}_LR_${LR}_${MIN_LR}_${DTYPE}_${SIZE_TAG}_${RUN_TAG}"
