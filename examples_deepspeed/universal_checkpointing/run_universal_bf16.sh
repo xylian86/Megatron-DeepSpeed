@@ -13,7 +13,7 @@ script_path=$(realpath $0)
 script_dir=$(dirname $script_path)
 CONFIG_JSON="$script_dir/ds_config.json"
 
-ZERO_STAGE=2
+ZERO_STAGE=1
 DTYPE="bf16"
 
 # Debug

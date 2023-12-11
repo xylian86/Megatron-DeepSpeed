@@ -3,10 +3,8 @@
 
 DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
-BASE_DATA_PATH=dataset/megatron_pile_dataset
-#data_path="BookCorpusDataset_text_document"
-#DATASET=${BASE_DATA_PATH}/gpt2_text_document
-DATASET=${BASE_DATA_PATH}/BookCorpusDataset_text_document
+BASE_DATA_PATH=datasets
+DATASET=${BASE_DATA_PATH}/my-gpt2_text_document
 VOCAB_PATH=${BASE_DATA_PATH}/gpt2-vocab.json
 MERGE_PATH=${BASE_DATA_PATH}/gpt2-merges.txt
 
@@ -15,7 +13,7 @@ script_path=$(realpath $0)
 script_dir=$(dirname $script_path)
 CONFIG_JSON="$script_dir/ds_config.json"
 
-ZERO_STAGE=2
+ZERO_STAGE=1
 DTYPE="bf16"
 
 # Debug
@@ -40,7 +38,7 @@ PP=2
 DP=2
 SP=1
 WORLD_SIZE=$((TP*PP*DP*SP))
-GLOBAL_BATCH=4
+GLOBAL_BATCH=16
 MICRO_BATCH=$((GLOBAL_BATCH/WORLD_SIZE))
 TRAIN_ITERS=1000
 LR=6.0e-3
@@ -116,8 +114,7 @@ options=" \
 	--tensorboard-dir $LOG_DIR
         "
 
-#--no-pipeline-parallel \
-#--pipeline-model-parallel-size $PP \
+#--no-pipeline-parallel \ #Add if using ZeRO stage 2
 
 options="${options} \
         --deepspeed \
