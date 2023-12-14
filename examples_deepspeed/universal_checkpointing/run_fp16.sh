@@ -114,7 +114,6 @@ options=" \
 	--tensorboard-dir $LOG_DIR
         "
 
-#--no-pipeline-parallel \ #Add if using ZeRO stage 2
 options="${options} \
         --deepspeed \
         --deepspeed_config=${CONFIG_JSON} \
@@ -122,6 +121,10 @@ options="${options} \
         --deepspeed-activation-checkpointing \
 "
 
+if [[ ${ZERO_STAGE} -gt 1 ]]; then
+options="${options} \
+    --no-pipeline-parallel"
+fi
 
 cat <<EOT > $CONFIG_JSON
 {
