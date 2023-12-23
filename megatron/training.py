@@ -40,7 +40,7 @@ from megatron.data.data_samplers import build_pretraining_data_loader
 from megatron.utils import calc_params_l2_norm
 from megatron.core.pipeline_parallel import get_forward_backward_func
 from megatron.utils import report_memory, throughput_calculator, checkpoint_throughput_calculator, update_rotary_pos_emb
-from megatron.model.vision.knn_monitor import compute_feature_bank
+# from megatron.model.vision.knn_monitor import compute_feature_bank
 from megatron.arguments import core_transformer_config_from_args
 
 import deepspeed
@@ -601,6 +601,7 @@ def setup_model_and_optimizer(model_provider_func,
                 training_data=train_ds,
                 mpu=mpu if args.no_pipeline_parallel else None,
                 config=args.deepspeed_config_dict,
+                compile=args.compile,
             )
             model.set_data_post_process_func(data_post_process)
         else:
@@ -611,6 +612,7 @@ def setup_model_and_optimizer(model_provider_func,
                 lr_scheduler=opt_param_scheduler,
                 mpu=mpu if args.no_pipeline_parallel else None,
                 config=args.deepspeed_config_dict,
+                compile=args.compile,
             )
         if isinstance(model, deepspeed.PipelineEngine):
             # hack to get batch_fn from pretrain_gpt.py
@@ -1282,6 +1284,8 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
             print_datetime('exiting program at iteration {}'.format(iteration))
             sys.exit()
 
+        if args.debug_steps > 0 and iteration > args.debug_steps:
+            sys.exit()
 
     return iteration
 
@@ -1295,8 +1299,8 @@ def evaluate(forward_step_func,
     """Evaluation."""
     args = get_args()
 
-    if args.vision_pretraining and args.vision_pretraining_type == "dino":
-        compute_feature_bank(model)
+    # if args.vision_pretraining and args.vision_pretraining_type == "dino":
+    #     compute_feature_bank(model)
 
     # Turn on evaluation mode which disables dropout.
     for model_module in model:
