@@ -225,6 +225,12 @@ fi
 if [ "${no_pp}" = "false" ]; then
     jobname="${jobname}_pp${pp_size}"
 fi
+
+disable_compile="true"
+if [ "${COMPILE}" = "true" ]; then
+disable_compile="false"
+fi
+
 jobname="${jobname}_gbs${global_batch_size}_mbs${batch_size}_comp${COMPILE}"
 jobname="${jobname}_seed${seed}_rebase"
 
@@ -306,6 +312,7 @@ sed "s/GBSIZE/${global_batch_size}/" ${template_json} \
     | sed "s/LOG_INTERVAL/${log_interval}/" \
     | sed "s/ZERO_STAGE/${zero_stage}/" \
     | sed "s/PRESCALE_GRAD/${prescale_grad}/" \
+    | sed "s/DISABLE_COMPILE/${disable_compile}/" \
       > ${config_json}
 
 deepspeed_options=" \
@@ -325,10 +332,6 @@ deepspeed_options="${deepspeed_options} \
     --deepspeed-activation-checkpointing"
 fi
 
-if [ "${COMPILE}" = "true" ]; then
-deepspeed_options="${deepspeed_options} \
-    --compile"
-fi
 
 ## When saving checkpoint to a storage with cache, their could be consistency
 ## issue of the pointer to latest checkpoint. Here we find the correct pointer

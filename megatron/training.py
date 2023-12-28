@@ -601,7 +601,6 @@ def setup_model_and_optimizer(model_provider_func,
                 training_data=train_ds,
                 mpu=mpu if args.no_pipeline_parallel else None,
                 config=args.deepspeed_config_dict,
-                compile=args.compile,
             )
             model.set_data_post_process_func(data_post_process)
         else:
@@ -612,7 +611,6 @@ def setup_model_and_optimizer(model_provider_func,
                 lr_scheduler=opt_param_scheduler,
                 mpu=mpu if args.no_pipeline_parallel else None,
                 config=args.deepspeed_config_dict,
-                compile=args.compile,
             )
         if isinstance(model, deepspeed.PipelineEngine):
             # hack to get batch_fn from pretrain_gpt.py
