@@ -17,12 +17,12 @@ ZERO_STAGE=1
 DTYPE="bf16"
 
 # Debug
-DEBUG_MODE=1 
+DEBUG_MODE=1
 if [[ $DEBUG_MODE == 1 ]]; then
         LAYERS=4
         HIDDEN=512
         SEQ=512
-        EXIT_INTERVAL=100
+        EXIT_INTERVAL=200
         SIZE_TAG="toy"
 else
         HIDDEN=1024
@@ -45,10 +45,10 @@ LR=6.0e-3
 MIN_LR=6.0e-4
 
 # 3D parallelism of checkpoint to load
-LOAD_TP=1
-LOAD_PP=1
-LOAD_DP=4
-LOAD_SP=1
+LOAD_TP=$TP
+LOAD_PP=$PP
+LOAD_DP=$DP
+LOAD_SP=$SP
 RUN_TAG="uni_load${LOAD_TP}_${LOAD_PP}_${LOAD_DP}_${LOAD_SP}"
 
 EXP_DIR="z${ZERO_STAGE}_uni_ckpt" 
@@ -114,7 +114,6 @@ options=" \
 	--tensorboard-dir $LOG_DIR
         "
 
-
 options="${options} \
         --deepspeed \
         --deepspeed_config=${CONFIG_JSON} \
@@ -140,7 +139,7 @@ cat <<EOT > $CONFIG_JSON
     "enabled": true
   },
 
-    "data_types": {
+  "data_types": {
         "grad_accum_dtype": "fp32" 
   },
 
@@ -151,7 +150,7 @@ EOT
 WORKER_STR="--num_nodes 1 --num_gpus $WORLD_SIZE"
 run_cmd="deepspeed --master_port 29700 $WORKER_STR ${DIR}/pretrain_gpt.py $@ ${options}"
 
-
+echo ${options}
 echo ${run_cmd}
 eval ${run_cmd}
 
