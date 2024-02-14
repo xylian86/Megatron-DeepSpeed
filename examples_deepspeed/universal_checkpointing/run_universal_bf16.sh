@@ -45,10 +45,10 @@ LR=6.0e-3
 MIN_LR=6.0e-4
 
 # 3D parallelism of checkpoint to load
-LOAD_TP=$TP
-LOAD_PP=$PP
-LOAD_DP=$DP
-LOAD_SP=$SP
+LOAD_TP=2
+LOAD_PP=2
+LOAD_DP=2
+LOAD_SP=1
 RUN_TAG="uni_load${LOAD_TP}_${LOAD_PP}_${LOAD_DP}_${LOAD_SP}"
 
 EXP_DIR="z${ZERO_STAGE}_uni_ckpt" 
