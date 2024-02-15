@@ -1,4 +1,5 @@
 import os
+import re
 import pandas as pd
 import matplotlib.pyplot as plt
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
@@ -31,9 +32,13 @@ log_dir = args.tb_dir
 target_affix = 'events.out.tfevents'
 tb_log_paths = find_files_recursive(log_dir, target_affix)
 
-i = 0
+pattern = '.*tp(\d).*pp(\d).*dp(\d).*sp(\d)'
+
 for tb_path in tb_log_paths:
     print(f"tb_path: {tb_path}")
+    match = re.match(pattern, tb_path)
+
+    label = f"TP: {match.group(1)}, PP: {match.group(2)}, DP: {match.group(3)}, SP: {match.group(4)}"
 
     event_accumulator = EventAccumulator(tb_path)
     event_accumulator.Reload()
@@ -43,14 +48,16 @@ for tb_path in tb_log_paths:
     x = [x.step for x in events]
     y = [x.value for x in events]
 
-    plt.plot(x, y, label=f'UC Training Run {i}')
+    plt.plot(x, y, label=f'Training Run: {label}')
+
+    csv_filename = f"uc_out_tp_{match.group(1)}_pp_{match.group(2)}_dp_{match.group(3)}_sp_{match.group(4)}"
 
     df = pd.DataFrame({"step": x, "value": y})
-    df.to_csv(f"file{i}.csv")
-    i = i + 1
+    df.to_csv(f"{csv_filename}.csv")
     print(df)
 
 plt.legend()
+plt.title('Megatron-GPT Universal Checkpointing')
 plt.ylabel("LM Loss")
 plt.xlabel("Training Step")
 plt.savefig("uni_ckpt_char.png")
