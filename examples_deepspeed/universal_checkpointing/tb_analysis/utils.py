@@ -27,8 +27,6 @@ def find_files_recursive(directory, file_affix):
 
 def get_analyzer(analyzer_name):
     if analyzer_name == 'universal_checkpointing':
-        analyzer = UniversalCheckpointingAnalysis()
-        # TODO: can this work with just the class init call being returned?
-        return analyzer
+        return UniversalCheckpointingAnalysis()
     else:
         raise ValueError(f"Unsupported analyzer {analyzer_name}")
