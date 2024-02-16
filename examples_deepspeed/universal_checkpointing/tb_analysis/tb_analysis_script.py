@@ -20,10 +20,8 @@ if args.use_sns:
     except ImportError as e:
         print(e)
 
-log_dir = args.tb_dir
-
 target_affix = 'events.out.tfevents'
-tb_log_paths = find_files_recursive(log_dir, target_affix)
+tb_log_paths = find_files_recursive(args.tb_dir, target_affix)
 
 analyzer = get_analyzer(args.analyzer)
 
