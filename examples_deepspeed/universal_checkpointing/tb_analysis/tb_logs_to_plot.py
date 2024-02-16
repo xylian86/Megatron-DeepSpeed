@@ -51,7 +51,7 @@ for tb_path in tb_log_paths:
 
     if not args.skip_csv:
         df = pd.DataFrame({"step": x, "value": y})
-        df.to_csv(f"{analyzer.get_csv_filename()}.csv")
+        df.to_csv(f"{args.csv_name}{analyzer.get_csv_filename()}.csv")
         print(df)
 
 if not args.skip_plot:
