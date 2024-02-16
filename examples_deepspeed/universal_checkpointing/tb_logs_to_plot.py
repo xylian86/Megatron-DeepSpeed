@@ -36,7 +36,7 @@ log_dir = args.tb_dir
 target_affix = 'events.out.tfevents'
 tb_log_paths = find_files_recursive(log_dir, target_affix)
 
-pattern = '.*tp(\d).*pp(\d).*dp(\d).*sp(\d)'
+pattern = '.*tp(\d+).*pp(\d+).*dp(\d+).*sp(\d+)'
 
 for tb_path in tb_log_paths:
     print(f"tb_path: {tb_path}")
