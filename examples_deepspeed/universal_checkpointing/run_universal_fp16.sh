@@ -156,6 +156,7 @@ WORKER_STR="--num_nodes 1 --num_gpus $WORLD_SIZE"
 run_cmd="deepspeed --master_port 29700 $WORKER_STR ${DIR}/pretrain_gpt.py $@ ${options}"
 
 
+echo ${options}
 echo ${run_cmd}
 eval ${run_cmd}
 
