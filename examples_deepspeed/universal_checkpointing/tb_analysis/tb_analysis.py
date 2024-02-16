@@ -47,7 +47,7 @@ for tb_path in tb_log_paths:
     x = [x.step for x in events]
     y = [x.value for x in events]
 
-    plt.plot(x, y, label=f'Training Run: {analyzer.get_label_name()}')
+    plt.plot(x, y, label=f'{analyzer.get_label_name()}')
 
     if not args.skip_csv:
         df = pd.DataFrame({"step": x, "value": y})
