@@ -11,14 +11,14 @@ if [ "$OUTPUT_PATH" == "" ]; then
 fi
 
 # Training Loss
-python3 examples_deepspeed/universal_checkpointing/tb_analysis/tb_logs_to_plot.py \
+python3 examples_deepspeed/universal_checkpointing/tb_analysis/tb_analysis.py \
     --tb_dir $OUTPUT_PATH \
     --tb_event_key "lm-loss-training/lm loss" \
     --plot_name "uc_char_training_loss.png" \
     --plot_title "Megatron-GPT Universal Checkpointing - Training Loss"
 
 # Validation Loss
-python3 examples_deepspeed/universal_checkpointing/tb_analysis/tb_logs_to_plot.py \
+python3 examples_deepspeed/universal_checkpointing/tb_analysis/tb_analysis.py \
     --tb_dir $OUTPUT_PATH \
     --tb_event_key "lm-loss-validation/lm loss validation" \
     --csv_name "val" --plot_name "uc_char_validation_loss.png" \
