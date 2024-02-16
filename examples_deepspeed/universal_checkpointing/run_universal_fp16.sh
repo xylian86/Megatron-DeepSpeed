@@ -33,9 +33,9 @@ else
 fi  
 
 # 3D parallelism of training 
-TP=1
-PP=1
-DP=4
+TP=2
+PP=2
+DP=1
 SP=1
 WORLD_SIZE=$((TP*PP*DP*SP))
 GLOBAL_BATCH=16
