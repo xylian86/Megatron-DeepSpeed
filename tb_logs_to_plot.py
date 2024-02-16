@@ -41,8 +41,12 @@ pattern = '.*tp(\d).*pp(\d).*dp(\d).*sp(\d)'
 for tb_path in tb_log_paths:
     print(f"tb_path: {tb_path}")
     match = re.match(pattern, tb_path)
+    tp = match.group(1)
+    pp = match.group(2)
+    dp = match.group(3)
+    sp = match.group(4)
 
-    label = f"TP: {match.group(1)}, PP: {match.group(2)}, DP: {match.group(3)}"
+    label = f"TP: {tp}, PP: {pp}, DP: {dp}"
 
     event_accumulator = EventAccumulator(tb_path)
     event_accumulator.Reload()
@@ -58,7 +62,7 @@ for tb_path in tb_log_paths:
 
     plt.plot(x, y, label=f'Training Run: {label}')
 
-    csv_filename = f"uc_out_tp_{match.group(1)}_pp_{match.group(2)}_dp_{match.group(3)}_sp_{match.group(4)}"
+    csv_filename = f"uc_out_tp_{tp}_pp_{pp}_dp_{dp}_sp_{sp}"
 
     df = pd.DataFrame({"step": x, "value": y})
     df.to_csv(f"{csv_filename}.csv")
