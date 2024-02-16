@@ -7,7 +7,6 @@ import os
 import re
 import pandas as pd
 import matplotlib.pyplot as plt
-# TODO: use sns package (fancy plot)
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 from utils import get_analyzer, find_files_recursive
 from arguments import parser
@@ -36,13 +35,6 @@ for tb_path in tb_log_paths:
     event_accumulator.Reload()
 
     events = event_accumulator.Scalars(args.tb_event_key)
-    #events = event_accumulator.Scalars('lm-loss-training/lm loss')
-    #events = event_accumulator.Scalars('lm-loss-validation/lm loss validation')
-
-    # TODO: make tb key arg to script
-    # iteration time
-    # validation loss
-    # sample/sec (throughput)
 
     x = [x.step for x in events]
     y = [x.value for x in events]
@@ -60,4 +52,5 @@ if not args.skip_plot:
     plt.xlabel(args.plot_x_label)
     plt.ylabel(args.plot_y_label)
     plt.savefig(args.plot_name)
+
 print(tb_log_paths)
