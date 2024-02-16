@@ -2,8 +2,12 @@ import os
 import re
 import pandas as pd
 import matplotlib.pyplot as plt
+# TODO: use sns package (fancy plot)
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 from argparse import ArgumentParser
+#import seaborn as sns
+
+#sns.set()
 
 parser = ArgumentParser()
 parser.add_argument("--tb_dir", required=True, type=str, help="Directory for tensorboard output")
@@ -23,7 +27,7 @@ def find_files_recursive(directory, file_affix):
     matching_paths = []
     for root, _, files in os.walk(directory):
         for filename in files:
-            if filename.lower().startswith(file_affix.lower()):
+            if root not in matching_paths and filename.lower().startswith(file_affix.lower()):
                 matching_paths.append(os.path.join(root))
     return matching_paths
 
@@ -38,12 +42,16 @@ for tb_path in tb_log_paths:
     print(f"tb_path: {tb_path}")
     match = re.match(pattern, tb_path)
 
-    label = f"TP: {match.group(1)}, PP: {match.group(2)}, DP: {match.group(3)}, SP: {match.group(4)}"
+    label = f"TP: {match.group(1)}, PP: {match.group(2)}, DP: {match.group(3)}"
 
     event_accumulator = EventAccumulator(tb_path)
     event_accumulator.Reload()
 
     events = event_accumulator.Scalars('lm-loss-training/lm loss')
+    # TODO: make tb key arg to script
+    # iteration time
+    # validation loss
+    # sample/sec (throughput)
 
     x = [x.step for x in events]
     y = [x.value for x in events]
@@ -60,5 +68,6 @@ plt.legend()
 plt.title('Megatron-GPT Universal Checkpointing')
 plt.ylabel("LM Loss")
 plt.xlabel("Training Step")
+#plt.savefig("sns_uni_ckpt_char.png")
 plt.savefig("uni_ckpt_char.png")
 print(tb_log_paths)
