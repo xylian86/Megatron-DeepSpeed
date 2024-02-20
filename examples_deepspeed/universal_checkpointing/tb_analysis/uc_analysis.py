@@ -14,10 +14,9 @@ class UniversalCheckpointingAnalysis(TensorBoardAnalysis):
 
     def set_names(self, path_name):
         match = re.match(self.path_regex(), path_name)
-        tp = match.group(1)
-        pp = match.group(2)
-        dp = match.group(3)
-        sp = match.group(4)
+        if not match:
+            raise ValueError(f"Path ({path_name}) did not match regex ({self.path_regex()})")
+        tp, pp, dp, sp = match.groups()
 
         self._label_name = f"Training Run: TP: {tp}, PP: {pp}, DP: {dp}"
         self._csv_name = f"uc_out_tp_{tp}_pp_{pp}_dp_{dp}_sp_{sp}_val_loss"

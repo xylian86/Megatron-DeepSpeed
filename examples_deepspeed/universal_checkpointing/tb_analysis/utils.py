@@ -7,13 +7,13 @@ import os
 from uc_analysis import UniversalCheckpointingAnalysis
 
 
-def find_files_recursive(directory, file_affix):
+def find_files(directory, file_affix):
     """
-    Recursively searches for files with a specific affix in a directory.
+    Searches for files with a specific affix in a directory using os.walk().
 
     Args:
         directory (str): The path to the directory to search.
-        file_affix (str): The desired file affix
+        file_affix (str): The desired file affix.
 
     Returns:
         list: A list of paths to matching files.
