@@ -79,7 +79,7 @@ Combining sequence parallelism with data parallelism is another good use case fo
 
 ### TensorBoard Log Analysis
 
-The Universal Checkpointing example includes a TensorBoard analysis script that'll generate `csv` files and `png` plots across the various training steps for comparison of training and validation loss curves.
+The Universal Checkpointing example includes a TensorBoard analysis script that'll generate `csv` files and `png` plots across the unviersal checkpointing training steps for comparison of training and validation loss curves.
 
 The script can be executed as follows after Step 3 is completed:
 ```bash
@@ -99,17 +99,15 @@ The script will also output the following `png` files:
 Below is the visualization of the `.png` files generated from this example.
 
 <div align="center">
+  <img src="assets/image/uc_char_training_loss.png" alt="" width="600"/>
 
-<img src="assets/image/uc_char_training_loss.png" alt="" width="600"/>
-Figure 1: Training LM loss curve for first 200 training steps of Step 1 (TP=2, PP=2, DP=2) and training steps 101 to 200 of Step 3 (TP=2, PP=2, DP=1), which was loaded using the Universal Checkpoint.
-
+  *Figure 1: Training LM loss curve for first 200 training steps of Step 1 (TP=2, PP=2, DP=2) and training steps 101 to 200 of Step 3 (TP=2, PP=2, DP=1), which was loaded using the Universal Checkpoint.*
 </div>
 
 <div align="center">
+  <img src="assets/image/uc_char_validation_loss.png" alt="" width="600"/>
 
-<img src="assets/image/uc_char_validation_loss.png" alt="" width="600"/>
-Figure 1: Validation LM loss curve for first 200 training steps of Step 1 (TP=2, PP=2, DP=2) and training steps 101 to 200 of Step 3 (TP=2, PP=2, DP=1), which was loaded using the Universal Checkpoint.
-
+  *Figure 1: Validation LM loss curve for first 200 training steps of Step 1 (TP=2, PP=2, DP=2) and training steps 101 to 200 of Step 3 (TP=2, PP=2, DP=1), which was loaded using the Universal Checkpoint.*
 </div>
 
 
