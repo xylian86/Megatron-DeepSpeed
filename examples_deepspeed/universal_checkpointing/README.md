@@ -96,7 +96,7 @@ The script will also output the following `png` files:
   - `uc_char_training_loss.png`
   - `uc_char_validation_loss.png`
 
-Below is the visualization of the `.png` files generated from this example.
+Below is the visualization of the `png` files generated from this example.
 
 <div align="center">
   <img src="assets/image/uc_char_training_loss.png" alt="" width="600"/>
