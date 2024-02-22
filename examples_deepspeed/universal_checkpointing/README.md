@@ -107,7 +107,7 @@ Below is the visualization of the `.png` files generated from this example.
 <div align="center">
   <img src="assets/image/uc_char_validation_loss.png" alt="" width="600"/>
 
-  *Figure 1: Validation LM loss curve for first 200 training steps of Step 1 (TP=2, PP=2, DP=2) and training steps 101 to 200 of Step 3 (TP=2, PP=2, DP=1), which was loaded using the Universal Checkpoint.*
+  *Figure 2: Validation LM loss curve for first 200 training steps of Step 1 (TP=2, PP=2, DP=2) and training steps 101 to 200 of Step 3 (TP=2, PP=2, DP=1), which was loaded using the Universal Checkpoint.*
 </div>
 
 
