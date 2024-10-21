@@ -3,7 +3,7 @@
 
 DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
-BASE_DATA_PATH=dataset
+BASE_DATA_PATH=/u/xlian/datasets
 DATASET=${BASE_DATA_PATH}/my-gpt2_text_document
 VOCAB_PATH=${BASE_DATA_PATH}/gpt2-vocab.json
 MERGE_PATH=${BASE_DATA_PATH}/gpt2-merges.txt
@@ -13,33 +13,101 @@ script_path=$(realpath $0)
 script_dir=$(dirname $script_path)
 CONFIG_JSON="$script_dir/ds_config.json"
 
-ZERO_STAGE=1
+ZERO_STAGE=2
 DTYPE="fp16"
 
 # Debug
-DEBUG_MODE=1
-if [[ $DEBUG_MODE == 1 ]]; then
+MODEL_SIZE="gpt3_8B"
+EXIT_INTERVAL=5
+
+if [[ $MODEL_SIZE == "toy" ]]; then
         LAYERS=4
         HIDDEN=512
         SEQ=512
-        EXIT_INTERVAL=200
+        ATTENTION_HEADS=32
         SIZE_TAG="toy"
-else
+elif [[ $MODEL_SIZE == "gpt3_350M" ]]; then
         HIDDEN=1024
         LAYERS=24
         SEQ=1024
-        EXIT_INTERVAL=100
-        SIZE_TAG="big"
-fi  
+        ATTENTION_HEADS=16
+        SIZE_TAG="gpt3_350M"
+elif [[ $MODEL_SIZE == "gpt3_1B" ]]; then
+        HIDDEN=2048
+        LAYERS=20
+        SEQ=1024
+        ATTENTION_HEADS=32
+        SIZE_TAG="gpt3_1B"
+elif [[ $MODEL_SIZE == "gpt3_1.3B" ]]; then
+        HIDDEN=2048
+        LAYERS=24
+        SEQ=1024
+        ATTENTION_HEADS=32
+        SIZE_TAG="gpt3_1.3B"
+elif [[ $MODEL_SIZE == "gpt3_2.7B" ]]; then
+        HIDDEN=2560
+        LAYERS=32
+        SEQ=1024
+        ATTENTION_HEADS=32
+        SIZE_TAG="gpt3_2.7B"
+elif [[ $MODEL_SIZE == "gpt3_4B" ]]; then
+        HIDDEN=2304
+        LAYERS=64
+        SEQ=1024
+        ATTENTION_HEADS=32
+        SIZE_TAG="gpt3_4B"
+elif [[ $MODEL_SIZE == "gpt3_6.7B" ]]; then
+        HIDDEN=4096
+        LAYERS=32
+        SEQ=1024
+        ATTENTION_HEADS=64
+        SIZE_TAG="gpt3_6.7B"
+elif [[ $MODEL_SIZE == "gpt3_8B" ]]; then
+        HIDDEN=3072
+        LAYERS=72
+        SEQ=1024
+        ATTENTION_HEADS=32
+        SIZE_TAG="gpt3_8B"
+elif [[ $MODEL_SIZE == "gpt3_10B" ]]; then
+        HIDDEN=4096
+        LAYERS=50
+        SEQ=1024
+        ATTENTION_HEADS=32
+        SIZE_TAG="gpt3_10B"
+elif [[ $MODEL_SIZE == "gpt3_13B" ]]; then
+        HIDDEN=5120
+        LAYERS=40
+        SEQ=2048
+        ATTENTION_HEADS=40
+        SIZE_TAG="gpt3-13B"
+elif [[ $MODEL_SIZE == "gpt3_42B" ]]; then
+        HIDDEN=8192
+        LAYERS=1
+        SEQ=3072
+        ATTENTION_HEADS=64
+        SIZE_TAG="gpt3-42B"
+elif [[ $MODEL_SIZE == "gpt3_176B" ]]; then
+        HIDDEN=12288
+        LAYERS=1
+        SEQ=4096
+        ATTENTION_HEADS=96
+        SIZE_TAG="gpt3-176B"
+else
+        HIDDEN=5120
+        LAYERS=40
+        SEQ=1024
+        ATTENTION_HEADS=80
+        SIZE_TAG="gpt3_13B"
+fi
 
 # 3D parallelism of training 
-TP=2
-PP=2
-DP=2
+TP=1
+PP=1
+DP=1
 SP=1
 WORLD_SIZE=$((TP*PP*DP*SP))
-GLOBAL_BATCH=16
-MICRO_BATCH=$((GLOBAL_BATCH/WORLD_SIZE))
+GLOBAL_BATCH=64
+MICRO_BATCH=16
 TRAIN_ITERS=100000
 LR=6.0e-3
 MIN_LR=6.0e-4
@@ -77,12 +145,13 @@ done
 
 
 options=" \
+        --use-flash-attn-v2 \
 	--tensor-model-parallel-size $TP \
 	--pipeline-model-parallel-size $PP \
-    --ds-sequence-parallel-size $SP \
+    	--ds-sequence-parallel-size $SP \
         --num-layers $LAYERS \
         --hidden-size $HIDDEN \
-        --num-attention-heads 32 \
+        --num-attention-heads $ATTENTION_HEADS \
         --seq-length $SEQ \
         --loss-scale 12 \
         --max-position-embeddings $SEQ \
@@ -93,12 +162,12 @@ options=" \
 	--min-lr $MIN_LR \
         --lr-decay-style cosine \
         --log-interval 1 \
-        --eval-iters 40 \
-        --eval-interval 10 \
+        --eval-iters 400 \
+        --eval-interval 100 \
 	--data-path ${DATASET} \
 	--vocab-file ${VOCAB_PATH} \
 	--merge-file ${MERGE_PATH} \
-	--save-interval 100 \
+	--save-interval 10 \
         --split 98,2,0 \
         --clip-grad 1.0 \
 	--weight-decay 0.1 \
@@ -111,7 +180,8 @@ options=" \
         --save ${CHECKPOINT_PATH} \
         --load ${LOAD_CHECKPOINT_PATH} \
         --make-vocab-size-divisible-by 256 \
-	--tensorboard-dir $LOG_DIR
+	--tensorboard-dir $LOG_DIR \
+        --profile pt
         "
 
 options="${options} \
@@ -120,6 +190,11 @@ options="${options} \
         --zero-stage=${ZERO_STAGE} \
         --deepspeed-activation-checkpointing \
 "
+
+options="${options} \
+        --cpu-optimizer \
+"
+
 if [[ ${ZERO_STAGE} -gt 1 ]]; then
 options="${options} \
     --no-pipeline-parallel"
@@ -132,7 +207,12 @@ cat <<EOT > $CONFIG_JSON
   "steps_per_print": 1,
 
   "zero_optimization": {
-    "stage": $ZERO_STAGE
+    "stage": $ZERO_STAGE,
+    "offload_optimizer": {
+        "device": "cpu"
+    },
+    "overlap_comm": true,
+    "reduce_bucket_size": 50000000
   },
 
   "bf16": {
@@ -148,7 +228,7 @@ cat <<EOT > $CONFIG_JSON
     "initial_scale_power": 12
   },
 
-  "wall_clock_breakdown" : false
+  "wall_clock_breakdown" : true
 }
 EOT
 

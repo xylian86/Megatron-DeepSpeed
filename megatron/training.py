@@ -1355,17 +1355,19 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
                 done_cuda, op=torch.distributed.ReduceOp.MAX)
             done = done_cuda.item()
             if done:
-                if not saved_checkpoint:
-                    save_checkpoint_and_time(iteration, model, optimizer,
-                                             opt_param_scheduler)
+                # HACK: Skip saving the checkpoint now
+                # if not saved_checkpoint:
+                #     save_checkpoint_and_time(iteration, model, optimizer,
+                #                              opt_param_scheduler)
                 print_datetime('exiting program after {} minutes'.format(train_time))
                 sys.exit()
 
         # Exiting based on iterations
         if args.exit_interval and iteration % args.exit_interval == 0:
-            if args.save and not saved_checkpoint:
-                save_checkpoint_and_time(iteration, model, optimizer,
-                                         opt_param_scheduler)
+            # HACK: Skip saving the checkpoint now
+            # if args.save and not saved_checkpoint:
+            #     save_checkpoint_and_time(iteration, model, optimizer,
+            #                              opt_param_scheduler)
             torch.distributed.barrier()
             print_datetime('exiting program at iteration {}'.format(iteration))
             sys.exit()
