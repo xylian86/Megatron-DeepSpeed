@@ -27,6 +27,82 @@ import subprocess
 from torch import nn
 import torch.nn.functional as F
 
+import time
+from collections import defaultdict
+from torch.cuda import Event as CudaEvent
+
+
+class DetailedParameterTracker:
+    def __init__(self):
+        self.access_log = defaultdict(list)
+        self.cuda_events = defaultdict(list)
+        self.parameters = {}
+        
+    def track_parameter(self, name, parameter):
+        self.parameters[name] = parameter
+
+        def backward_hook(grad):
+            # Create CUDA events for precise GPU timing
+            start_event = CudaEvent(enable_timing=True)
+            end_event = CudaEvent(enable_timing=True)
+
+            # Record start before grad computation
+            torch.cuda.synchronize()
+            start_event.record()
+
+            # Clone grad to force synchronization and capture actual computation
+            grad_computed = grad.clone() 
+
+            # Record end after computation
+            end_event.record()
+            torch.cuda.synchronize()
+            
+            timestamp = time.time()
+
+            self.access_log[name].append({
+                'timestamp': timestamp,
+                'operation': 'backward',
+                'shape': parameter.shape,
+                'device': parameter.device,
+                'memory_allocated': torch.cuda.memory_allocated() / (1024 * 1024),  # MB
+                'start_event': start_event,
+                'end_event': end_event,
+                'grad_norm': torch.norm(grad_computed).item()  # Additional info
+            })
+            return grad 
+            
+        parameter.register_hook(backward_hook)
+        
+        def forward_pre_hook(module, input):
+            start_event = CudaEvent(enable_timing=True)
+            end_event = CudaEvent(enable_timing=True)
+            
+            start_event.record()
+            
+            timestamp = time.time()
+            self.access_log[name].append({
+                'timestamp': timestamp,
+                'operation': 'forward_pre',
+                'shape': parameter.shape,
+                'device': parameter.device,
+                'memory_allocated': torch.cuda.memory_allocated() / (1024 * 1024),  # MB
+                'start_event': start_event,
+                'end_event': end_event
+            })
+            
+        def forward_hook(module, input, output):
+            if self.access_log[name]:
+                last_access = self.access_log[name][-1]
+                if last_access['operation'] == 'forward_pre':
+                    last_access['end_event'].record()
+                    
+        return forward_pre_hook, forward_hook
+
+
+    def get_parameter(self, name):
+        """Get the stored parameter by name."""
+        return self.parameters.get(name) 
+
 
 def model_provider(pre_process=True, post_process=True):
     """Build the model."""
@@ -42,6 +118,9 @@ def model_provider(pre_process=True, post_process=True):
         dpg = mpu.get_data_parallel_group()
     else:
         dpg = None
+
+    tracker = DetailedParameterTracker()
+
     with deepspeed.zero.Init(data_parallel_group=dpg,
                              remote_device=None if args.remote_device == 'none' else args.remote_device,
                              config_dict_or_path=args.deepspeed_config_dict,
@@ -86,6 +165,23 @@ def model_provider(pre_process=True, post_process=True):
                 pre_process=pre_process,
                 post_process=post_process
             )
+
+            for name, module in model.named_modules():
+                print(name, "---", module)
+                if hasattr(module, 'weight') and isinstance(module.weight, torch.nn.Parameter):
+                    # Register hooks for the module
+                    forward_pre_hook, forward_hook = tracker.track_parameter(f"{name}_weight", module.weight)
+                    module.register_forward_pre_hook(forward_pre_hook)
+                    module.register_forward_hook(forward_hook)
+                    
+                if hasattr(module, 'bias') and isinstance(module.bias, torch.nn.Parameter):
+                    # Track bias parameters too
+                    forward_pre_hook, forward_hook = tracker.track_parameter(f"{name}_bias", module.bias)
+                    module.register_forward_pre_hook(forward_pre_hook)
+                    module.register_forward_hook(forward_hook)
+
+
+    args.parameter_tracker = tracker
     see_memory_usage(f"After Building Model", force=True)
     return model
 
@@ -254,6 +350,61 @@ def calculate_mos_loss(args, stu_output, teacher_model, tokens, position_ids, at
         mos_loss = mos_loss.div(args.seq_length) * beta
     return mos_loss
 
+# Add timing analysis functions
+def analyze_parameter_timing():
+    args = get_args()
+    if not hasattr(args, 'parameter_tracker'):
+        return
+        
+    tracker = args.parameter_tracker
+    import numpy as np    
+    print("\nDetailed Parameter Usage Report:")
+    for name, accesses in tracker.access_log.items():
+        param = tracker.get_parameter(name)  # Assuming this method exists to get parameter
+        shape = param.shape
+        num_elements = np.prod(shape)
+        memory_size = num_elements * 2  # 2 bytes for fp16
+        
+        print(f"\nParameter: {name}")
+        # print(f"Shape: {shape}")
+        # print(f"Elements: {num_elements:,}")
+        memory_size = memory_size / 1024 / 1024 / 1024  # GB 
+        print(f"Memory (fp16): {memory_size:.6f} GB")
+
+        bandwidth = 1
+        transit_time = memory_size / bandwidth
+        # print(f"Total accesses: {len(accesses)}")
+        
+        # print("\nDetailed Access Timeline:")
+        forward_times = []
+        backward_times = []
+        
+        import time
+        program_start_time = accesses[0]['timestamp'] if accesses else time.time()
+        
+        for i, access in enumerate(accesses):
+            if 'start_event' in access and 'end_event' in access:
+                access['start_event'].synchronize()
+                access['end_event'].synchronize()
+                elapsed_time = access['start_event'].elapsed_time(access['end_event'])
+                global_time = access['timestamp'] - program_start_time
+                end_time = global_time + elapsed_time / 1000 
+                print("begin time", f"{global_time - transit_time:.6f}")
+                print("end time", f"{end_time + transit_time:.6f}")
+                # if access['operation'] == 'forward_pre':
+                #     print(f"Forward access #{i+1}")
+                #     print(f"  Local timing: {elapsed_time:.3f} ms")
+                #     print(f"  Global timing: {global_time:.3f} s")
+                #     forward_times.append(elapsed_time)
+                # elif access['operation'] == 'backward':
+                #     print(f"Backward access #{i+1}")
+                #     print(f"  Local timing: {elapsed_time:.3f} ms")
+                #     print(f"  Global timing: {global_time:.3f} s")
+                #     backward_times.append(elapsed_time)
+
+        print("-" * 50)
+
+
 def forward_step(data_iterator, model):
     """Forward step."""
     args = get_args()
@@ -281,6 +432,7 @@ def forward_step(data_iterator, model):
     else:
         output_tensor, other_losses = model(tokens, position_ids, attention_mask,
                                             labels=labels)
+        analyze_parameter_timing()
     if args.curriculum_learning_legacy and args.curriculum_seqlen < args.seq_length:
         loss_mask = loss_mask[:, :args.curriculum_seqlen].contiguous()
 
@@ -327,6 +479,45 @@ def train_valid_test_datasets_provider(train_val_test_num_samples):
 def command_exists(cmd):
     result = subprocess.Popen(f'type {cmd}', stdout=subprocess.PIPE, shell=True)
     return result.wait() == 0
+
+
+def get_parameter_usage_patterns(args):
+    if not hasattr(args, 'parameter_tracker'):
+        return
+        
+    tracker = args.parameter_tracker
+    patterns = defaultdict(dict)
+    
+    for name, accesses in tracker.access_log.items():
+        patterns[name] = {
+            'total_accesses': len(accesses),
+            'forward_accesses': len([a for a in accesses if a['operation'] == 'forward_pre']),
+            'backward_accesses': len([a for a in accesses if a['operation'] == 'backward']),
+            'device_transitions': len(set(a['device'] for a in accesses)),
+            'memory_profile': {
+                'min': min(a['memory_allocated'] for a in accesses),
+                'max': max(a['memory_allocated'] for a in accesses),
+                'avg': sum(a['memory_allocated'] for a in accesses) / len(accesses)
+            }
+        }
+    
+    return patterns
+
+# Add this to your training loop or wherever you want to analyze patterns
+def print_parameter_patterns():
+    args = get_args()
+    patterns = get_parameter_usage_patterns(args)
+    
+    print("\nParameter Usage Patterns:")
+    for name, stats in patterns.items():
+        print(f"\n{name}:")
+        print(f"  Total accesses: {stats['total_accesses']}")
+        print(f"  Forward/Backward ratio: {stats['forward_accesses']}/{stats['backward_accesses']}")
+        print(f"  Device transitions: {stats['device_transitions']}")
+        print(f"  Memory profile (MB):")
+        print(f"    Min: {stats['memory_profile']['min']:.2f}")
+        print(f"    Max: {stats['memory_profile']['max']:.2f}")
+        print(f"    Avg: {stats['memory_profile']['avg']:.2f}")
 
 
 def git_ds_info():

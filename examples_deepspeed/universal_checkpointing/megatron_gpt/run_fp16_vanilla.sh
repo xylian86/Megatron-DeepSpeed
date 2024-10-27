@@ -3,7 +3,7 @@
 
 DIR=`pwd`
 DATETIME=`date +'date_%y-%m-%d_time_%H-%M-%S'`
-BASE_DATA_PATH=/work/hdd/bcjw/xlian/training_datasets
+BASE_DATA_PATH=/u/xlian/datasets
 DATASET=${BASE_DATA_PATH}/my-gpt2_text_document
 VOCAB_PATH=${BASE_DATA_PATH}/gpt2-vocab.json
 MERGE_PATH=${BASE_DATA_PATH}/gpt2-merges.txt
@@ -17,7 +17,8 @@ ZERO_STAGE=3
 DTYPE="fp16"
 
 # Debug
-MODEL_SIZE="gpt3_10B"
+# Debug
+MODEL_SIZE="gpt3_2.7B"
 EXIT_INTERVAL=5
 
 if [[ $MODEL_SIZE == "toy" ]]; then
@@ -45,9 +46,9 @@ elif [[ $MODEL_SIZE == "gpt3_1.3B" ]]; then
         ATTENTION_HEADS=32
         SIZE_TAG="gpt3_1.3B"
 elif [[ $MODEL_SIZE == "gpt3_2.7B" ]]; then
-        HIDDEN=8192
-        LAYERS=2
-        SEQ=4096
+        HIDDEN=2560
+        LAYERS=32
+        SEQ=1024
         ATTENTION_HEADS=32
         SIZE_TAG="gpt3_2.7B"
 elif [[ $MODEL_SIZE == "gpt3_4B" ]]; then
@@ -103,11 +104,11 @@ fi
 # 3D parallelism of training 
 TP=1
 PP=1
-DP=1
+DP=4
 SP=1
 WORLD_SIZE=$((TP*PP*DP*SP))
-GLOBAL_BATCH=64
-MICRO_BATCH=32
+GLOBAL_BATCH=16
+MICRO_BATCH=$((GLOBAL_BATCH/WORLD_SIZE))
 TRAIN_ITERS=100000
 LR=6.0e-3
 MIN_LR=6.0e-4
@@ -145,13 +146,12 @@ done
 
 
 options=" \
-        --use-flash-attn-v2 \
 	--tensor-model-parallel-size $TP \
 	--pipeline-model-parallel-size $PP \
-    	--ds-sequence-parallel-size $SP \
+    --ds-sequence-parallel-size $SP \
         --num-layers $LAYERS \
         --hidden-size $HIDDEN \
-        --num-attention-heads $ATTENTION_HEADS \
+        --num-attention-heads 32 \
         --seq-length $SEQ \
         --loss-scale 12 \
         --max-position-embeddings $SEQ \
@@ -162,12 +162,12 @@ options=" \
 	--min-lr $MIN_LR \
         --lr-decay-style cosine \
         --log-interval 1 \
-        --eval-iters 400 \
-        --eval-interval 100 \
+        --eval-iters 40 \
+        --eval-interval 10 \
 	--data-path ${DATASET} \
 	--vocab-file ${VOCAB_PATH} \
 	--merge-file ${MERGE_PATH} \
-	--save-interval 10 \
+	--save-interval 5 \
         --split 98,2,0 \
         --clip-grad 1.0 \
 	--weight-decay 0.1 \
@@ -180,8 +180,7 @@ options=" \
         --save ${CHECKPOINT_PATH} \
         --load ${LOAD_CHECKPOINT_PATH} \
         --make-vocab-size-divisible-by 256 \
-	--tensorboard-dir $LOG_DIR \
-        --profile pt
+	--tensorboard-dir $LOG_DIR
         "
 
 options="${options} \
@@ -190,11 +189,6 @@ options="${options} \
         --zero-stage=${ZERO_STAGE} \
         --deepspeed-activation-checkpointing \
 "
-
-options="${options} \
-        --cpu-optimizer \
-"
-
 if [[ ${ZERO_STAGE} -gt 1 ]]; then
 options="${options} \
     --no-pipeline-parallel"
@@ -206,20 +200,9 @@ cat <<EOT > $CONFIG_JSON
   "train_micro_batch_size_per_gpu": $MICRO_BATCH,
   "steps_per_print": 1,
 
-    "zero_optimization": {
-        "stage": 3,
-        "contiguous_gradients": true,
-        "stage3_max_live_parameters": 1e9,
-        "stage3_max_reuse_distance": 1e9,
-        "stage3_prefetch_bucket_size": 1e7,
-        "stage3_param_persistence_threshold": 1e5,
-        "reduce_bucket_size": 1e7,
-        "sub_group_size": 1e9,
-        "offload_optimizer": {
-            "device": "cpu",
-            "pin_memory": true
-         }
-   },
+  "zero_optimization": {
+    "stage": $ZERO_STAGE
+  },
 
   "bf16": {
     "enabled": false
@@ -234,7 +217,7 @@ cat <<EOT > $CONFIG_JSON
     "initial_scale_power": 12
   },
 
-  "wall_clock_breakdown" : true
+  "wall_clock_breakdown" : false
 }
 EOT
 
