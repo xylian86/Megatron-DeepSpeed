@@ -693,7 +693,7 @@ def train_step(forward_step_func, data_iterator,
         optimizer.zero_grad()
 
     # Forward pass.
-    timers('forward-backward', log_level=0).start(
+    timers('forward-backward', log_level=1).start(
         barrier=args.barrier_with_L1_time)
     forward_backward_func = get_forward_backward_func()
     if args.mos or args.kd:
@@ -738,7 +738,7 @@ def train_step(forward_step_func, data_iterator,
         unwrapped_model.cancel_gradients_last_layer(args.curr_iteration)
 
     # Update parameters.
-    timers('optimizer', log_level=0).start(barrier=args.barrier_with_L1_time)
+    timers('optimizer', log_level=1).start(barrier=args.barrier_with_L1_time)
     if args.deepspeed:
         increment = get_num_microbatches() * \
                     args.micro_batch_size * \
