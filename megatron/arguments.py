@@ -695,7 +695,7 @@ def _add_logging_args(parser):
     group.add_argument('--log-num-zeros-in-grad', action='store_true',
                        help='If set, calculate and log the number of zeros in gradient.')
     group.add_argument('--timing-log-level', type=int,
-                       default=1, choices=range(0,3),
+                       default=0, choices=range(0,3),
                        help='Granularity level to measure and report timing. '
                        '   0: report only iteration time and make sure timing '
                        '      does not introduce extra overhead.'
