@@ -449,7 +449,8 @@ class FlashSelfAttention(torch.nn.Module):
             dropout_p = 0
 
         if self.use_flash_attn:
-            if self.use_flash_attn_v1 or self.use_flash_attn_v2:
+            args = get_args()
+            if args.use_flash_attn_v1 or args.use_flash_attn_v2:
                 output = self.flash_attn_func(
                     q, k, v, cu_seqlens_q, cu_seqlens_k, seqlen_q, seqlen_k,
                     dropout_p,
