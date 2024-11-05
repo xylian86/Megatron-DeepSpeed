@@ -302,6 +302,8 @@ def throughput_calculator(model, args, iteration_time, total_iterations):
     bwd_macs = 2 * fwd_macs
     fwd_bwd_macs = fwd_macs + bwd_macs
 
+    mfu = fwd_bwd_macs * macs_per_flops / (elapsed_time_per_iter * args.world_size * (990 * 10**12))
+
     if (hasattr(args, 'checkpoint_activations') and args.checkpoint_activations) or (hasattr(args, 'recompute_granularity') and args.recompute_granularity == 'full'):
         fwd_bwd_macs += fwd_macs
     if hasattr(args, 'recompute_granularity') and args.recompute_granularity == 'selective':
@@ -309,7 +311,7 @@ def throughput_calculator(model, args, iteration_time, total_iterations):
 
     flops_per_iteration = fwd_bwd_macs * macs_per_flops
     tflops = flops_per_iteration / (elapsed_time_per_iter * args.world_size * (10**12))
-    return samples_per_second, tflops, approx_parameters_in_billions
+    return samples_per_second, tflops, approx_parameters_in_billions, mfu
 
 def checkpoint_throughput_calculator(model, latency_second):
     approx_parameters_in_billions = get_parameters_in_billions(model)

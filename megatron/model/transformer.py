@@ -46,10 +46,17 @@ except ImportError:
     flash_attn_func = None
 
 try:
-    # FlashAttention-2
+    # flashattn-hopper# FlashAttention-2
     from flash_attn.flash_attn_interface import flash_attn_varlen_func
 except ImportError:
     flash_attn_varlen_func = None
+
+try:
+    import sys
+    sys.path.append('/u/xlian/flash-attention/hopper')
+    from flash_attn_interface import flash_attn_varlen_func as flash_attn_varlen_func_hopper
+except ImportError:
+    flash_attn_varlen_func_hopper = None
 
 FlashAttentionBuilder = get_accelerator().get_op_builder("FlashAttentionBuilder")
 flash_attn_builder = None
@@ -396,7 +403,12 @@ class FlashSelfAttention(torch.nn.Module):
                 self.flash_attn_func = flash_attn_builder.flash_attn_func_v2
                 self.use_flash_attn_builder_v2 = True
         else:
-            self.flash_attn_func = flash_attn_varlen_func if args.use_flash_attn_v2 else flash_attn_unpadded_func
+            if args.use_flash_attn_v2:
+                self.flash_attn_func = flash_attn_varlen_func
+            elif args.use_flash_attn_v3:
+                self.flash_attn_func = flash_attn_varlen_func_hopper
+            else:
+                self.flash_attn_func = flash_attn_unpadded_func
             self.use_flash_attn = True
 
     def forward(self, q, k, v):
@@ -408,7 +420,6 @@ class FlashSelfAttention(torch.nn.Module):
 
         assert all((i.dtype in [torch.float16, torch.bfloat16] for i in (q,k,v)))
         assert all((get_accelerator().on_accelerator(i) for i in (q, k, v)))
-
         batch_size, seqlen_q = q.shape[0], q.shape[1]
         seqlen_k = k.shape[1]
 
@@ -438,11 +449,17 @@ class FlashSelfAttention(torch.nn.Module):
             dropout_p = 0
 
         if self.use_flash_attn:
-            output = self.flash_attn_func(
-                q, k, v, cu_seqlens_q, cu_seqlens_k, seqlen_q, seqlen_k,
-                dropout_p,
-                softmax_scale=self.softmax_scale, causal=is_causal
-            )
+            if self.use_flash_attn_v1 or self.use_flash_attn_v2:
+                output = self.flash_attn_func(
+                    q, k, v, cu_seqlens_q, cu_seqlens_k, seqlen_q, seqlen_k,
+                    dropout_p,
+                    softmax_scale=self.softmax_scale, causal=is_causal
+                )
+            else:
+                output = self.flash_attn_func(
+                    q, k, v, cu_seqlens_q, cu_seqlens_k, seqlen_q, seqlen_k,
+                    softmax_scale=self.softmax_scale, causal=is_causal
+                )[0]
         else:
             # use_flash_attn_builder
             output = self.flash_attn_func(
@@ -516,7 +533,7 @@ class ParallelAttention(MegatronModule):
         self.use_gqa = (self.num_attention_heads != self.num_key_value_heads)
 
         self.use_flash_attn = (args.use_flash_attn_v1 or args.use_flash_attn_triton or args.use_flash_attn_v2 or \
-            args.use_flash_attn_builder) \
+            args.use_flash_attn_builder or args.use_flash_attn_v3) \
             and attention_type == AttnType.self_attn \
             and self.attn_mask_type == AttnMaskType.causal
         self.use_flash_attn_triton = args.use_flash_attn_triton
@@ -535,6 +552,8 @@ class ParallelAttention(MegatronModule):
                 assert flash_attn_func != None, "Cannot import FlashAttention triton "
             if args.use_flash_attn_builder:
                 assert flash_attn_builder != None, "Cannot find FlashAttention op builder "
+            if args.use_flash_attn_v3:
+                assert flash_attn_varlen_func_hopper != None, "Cannot import FlashAttention v3 "
 
             assert attention_type == AttnType.self_attn, ('FlashAttention code path only supports '
                                                           'self-attention for now')
@@ -605,7 +624,7 @@ class ParallelAttention(MegatronModule):
             self.dist_attn = DistributedAttention(
                 local_attn, 
                 parallel_state.get_sequence_parallel_group(), 
-                gather_idx=1 if args.use_flash_attn_v1 or args.use_flash_attn_v2 else 0) 
+                gather_idx=1 if args.use_flash_attn_v1 or args.use_flash_attn_v2 or args.use_flash_attn_v3 else 0) 
             # flash_attn_cuda assumes [b, s, nh, hd] layout, we need to make sure all2all gathers into the correct sequence dimension.
         else:
             if self.use_flash_attn:

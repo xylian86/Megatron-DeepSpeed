@@ -693,7 +693,7 @@ def train_step(forward_step_func, data_iterator,
         optimizer.zero_grad()
 
     # Forward pass.
-    timers('forward-backward', log_level=1).start(
+    timers('forward-backward', log_level=0).start(
         barrier=args.barrier_with_L1_time)
     forward_backward_func = get_forward_backward_func()
     if args.mos or args.kd:
@@ -738,7 +738,7 @@ def train_step(forward_step_func, data_iterator,
         unwrapped_model.cancel_gradients_last_layer(args.curr_iteration)
 
     # Update parameters.
-    timers('optimizer', log_level=1).start(barrier=args.barrier_with_L1_time)
+    timers('optimizer', log_level=0).start(barrier=args.barrier_with_L1_time)
     if args.deepspeed:
         increment = get_num_microbatches() * \
                     args.micro_batch_size * \
@@ -1109,7 +1109,7 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
         seq_len = args.seq_length
         if hasattr(args, 'actual_seq_length'):
             seq_len = args.actual_seq_length
-        samples_per_sec, tflops, approx_parameters_in_billions = throughput_calculator(
+        samples_per_sec, tflops, approx_parameters_in_billions, mfu = throughput_calculator(
             model,
             args,
             elapsed_time,
@@ -1182,6 +1182,7 @@ def training_log(loss_dict, total_loss_dict, learning_rate, iteration,
         log_string += ' samples per second: {:.3f} |'.format(samples_per_sec)
         log_string += ' tokens per gpu per second (tgs): {:.3f} |'.format(tokens_per_gpu_per_second)
         log_string += ' TFLOPs: {:.2f} |'.format(tflops)
+        log_string += ' MFU: {:.2f} |'.format(mfu * 100)
         total_loss_dict[advanced_iters_key] = 0
         total_loss_dict[skipped_iters_key] = 0
         total_loss_dict[nan_iters_key] = 0
@@ -1200,7 +1201,7 @@ def save_checkpoint_and_time(iteration, model, optimizer, opt_param_scheduler):
     # Extra barrier is added to make sure
     # all ranks report the max time.
     timers('save-checkpoint', log_level=0).start(barrier=True)
-    save_checkpoint(iteration, model, optimizer, opt_param_scheduler)
+    # save_checkpoint(iteration, model, optimizer, opt_param_scheduler)
     timers('save-checkpoint').stop(barrier=True)
     checkpoint_throughput_calculator(model, timers('save-checkpoint').elapsed(reset=False))
     timers.log(['save-checkpoint'])

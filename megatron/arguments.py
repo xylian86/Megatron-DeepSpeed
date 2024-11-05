@@ -430,7 +430,7 @@ def validate_args(args, defaults={}):
     args.compression_training = False
 
     # FlashAttention
-    args.use_flash_attn = args.use_flash_attn_v1 or args.use_flash_attn_triton or args.use_flash_attn_v2 or args.use_flash_attn_builder
+    args.use_flash_attn = args.use_flash_attn_v1 or args.use_flash_attn_triton or args.use_flash_attn_v2 or args.use_flash_attn_builder or args.use_flash_attn_v3
 
     # AML
     if args.aml_data_download_path is not None:
@@ -695,7 +695,7 @@ def _add_logging_args(parser):
     group.add_argument('--log-num-zeros-in-grad', action='store_true',
                        help='If set, calculate and log the number of zeros in gradient.')
     group.add_argument('--timing-log-level', type=int,
-                       default=0, choices=range(0,3),
+                       default=1, choices=range(0,3),
                        help='Granularity level to measure and report timing. '
                        '   0: report only iteration time and make sure timing '
                        '      does not introduce extra overhead.'
@@ -929,6 +929,9 @@ def _add_training_args(parser):
                        'https://arxiv.org/abs/2205.14135')
     group.add_argument('--use-flash-attn-v2', action='store_true',
                        help='use second version FlashAttention implementation of attention. '
+                       'https://arxiv.org/abs/2307.08691')
+    group.add_argument('--use-flash-attn-v3', action='store_true',
+                       help='use third version FlashAttention implementation of attention. '
                        'https://arxiv.org/abs/2307.08691')
     group.add_argument('--use-flash-attn-triton', action='store_true',
                        help='use FlashAttention implementation of attention using Triton.')
@@ -1568,7 +1571,7 @@ def _add_profiler_args(parser):
 
     group.add_argument("--profile_steps",
      type=str,
-     default='2,3',
+     default='8,9',
      help="Which steps to profile. Format: <start step>,<end step>")
     
     group.add_argument("--profile-ranks",
