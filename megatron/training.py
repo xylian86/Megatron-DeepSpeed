@@ -1200,7 +1200,7 @@ def save_checkpoint_and_time(iteration, model, optimizer, opt_param_scheduler):
     # Extra barrier is added to make sure
     # all ranks report the max time.
     timers('save-checkpoint', log_level=0).start(barrier=True)
-    save_checkpoint(iteration, model, optimizer, opt_param_scheduler)
+    # save_checkpoint(iteration, model, optimizer, opt_param_scheduler)
     timers('save-checkpoint').stop(barrier=True)
     checkpoint_throughput_calculator(model, timers('save-checkpoint').elapsed(reset=False))
     timers.log(['save-checkpoint'])
