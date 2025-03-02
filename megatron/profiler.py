@@ -49,7 +49,13 @@ def setup_profiler(args, device):
             schedule=schedule,
             activities=activities,
             on_trace_ready=torch.profiler.tensorboard_trace_handler(args.tensorboard_dir, use_gzip=True),
-            with_stack=full)
+            with_stack=full,
+            with_flops=full,
+            with_modules=full,
+            profile_memory=full,
+            execution_trace_observer=torch.profiler.ExecutionTraceObserver(),  # Enables graph-based tracing
+            acc_events=True  # Accumulates FunctionEvents across profiling cycles
+        )
 
         on_step_begin.append(when(is_start_step, profiler.start))
         on_step_end.append(when(is_capture_step, profiler.step))

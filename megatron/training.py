@@ -674,7 +674,13 @@ def train_step(forward_step_func, data_iterator,
     if args.deepspeed and args.ds_pipeline_enabled:
         num_zeros_in_grad = 0
         assert isinstance(model[0], deepspeed.PipelineEngine)
+        import time
+        torch.cuda.synchronize() 
+        start_time = time.time()
         loss = model[0].train_batch(data_iter=data_iterator)
+        torch.cuda.synchronize() 
+        end_time = time.time()
+        print(f"Forward time: {end_time - start_time} seconds")
         additional_losses = model[0].get_additional_losses()
         loss_key = 'lm loss' if additional_losses is None else 'loss'  # use "lm loss" for backward compatibility
         loss_dict = OrderedDict({loss_key: loss})
@@ -1357,18 +1363,18 @@ def train(forward_step_func, model, optimizer, opt_param_scheduler,
             done = done_cuda.item()
             if done:
                 # HACK: Skip saving the checkpoint now
-                # if not saved_checkpoint:
-                #     save_checkpoint_and_time(iteration, model, optimizer,
-                #                              opt_param_scheduler)
+                if not saved_checkpoint:
+                    save_checkpoint_and_time(iteration, model, optimizer,
+                                             opt_param_scheduler)
                 print_datetime('exiting program after {} minutes'.format(train_time))
                 sys.exit()
 
         # Exiting based on iterations
         if args.exit_interval and iteration % args.exit_interval == 0:
             # HACK: Skip saving the checkpoint now
-            # if args.save and not saved_checkpoint:
-            #     save_checkpoint_and_time(iteration, model, optimizer,
-            #                              opt_param_scheduler)
+            if args.save and not saved_checkpoint:
+                save_checkpoint_and_time(iteration, model, optimizer,
+                                         opt_param_scheduler)
             torch.distributed.barrier()
             print_datetime('exiting program at iteration {}'.format(iteration))
             sys.exit()

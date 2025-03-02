@@ -1,12 +1,12 @@
 # Copyright (c) 2022, NVIDIA CORPORATION. All rights reserved.
 
 from deepspeed.accelerator import get_accelerator
-if get_accelerator().device_name() == 'cuda':
-    from apex.optimizers import FusedAdam as Adam
-    from apex.optimizers import FusedSGD as SGD
-else:
-    from torch.optim import Adam
-    from torch.optim import SGD
+# if get_accelerator().device_name() == 'cuda':
+    # from apex.optimizers import FusedAdam as Adam
+    # from apex.optimizers import FusedSGD as SGD
+# else:
+from torch.optim import Adam
+from torch.optim import SGD
 
 from megatron import get_args
 
